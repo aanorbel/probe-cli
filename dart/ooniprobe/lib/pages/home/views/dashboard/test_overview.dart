@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -22,6 +23,27 @@ class TestOverViewPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
+  launchAppUrl(String url) async {
+    if (!await launchUrl(Uri.parse(url))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not launch ${url.toString()}'),
+        ),
+      );
+    }
+  }
+  // Handle the link. The [href] in the callback contains information
+  // from the link. The url_launcher package or other similar package
+  // can be used to execute the link.
+  Future<void> linkOnTapHandler(
+    BuildContext context,
+    String text,
+    String? href,
+    String title,
+  ) async {
+    await launchAppUrl(href as String);
+  }
     var infoStyle =
         Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white);
     return Scaffold(
@@ -100,6 +122,9 @@ class TestOverViewPage extends StatelessWidget {
                     data: descriptor.methodology,
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
+                     onTapLink: (String text, String? href, String title) {
+                       linkOnTapHandler(context, text, href, title);
+                     },
                   ),
                 ),
               ),

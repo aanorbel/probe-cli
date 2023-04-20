@@ -26,7 +26,9 @@ class _AppState extends State<App> with TrayListener {
   @override
   void initState() {
     super.initState();
-    initTrayIcon();
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      initTrayIcon();
+    }
   }
 
   @override
