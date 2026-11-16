@@ -15,6 +15,8 @@ on:
 jobs:
   build_ios_mobile:
     runs-on: macos-14
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,6 +34,10 @@ jobs:
       - run: brew install autoconf automake coreutils libtool
 
       - run: make EXPECTED_XCODE_VERSION=15.4 ios
+
+      - run: ./script/ghpublish.bash ./MOBILE/ios/libcrypto.xcframework.zip ./MOBILE/ios/libcrypto.podspec ./MOBILE/ios/libevent.xcframework.zip ./MOBILE/ios/libevent.podspec ./MOBILE/ios/libssl.xcframework.zip ./MOBILE/ios/libssl.podspec ./MOBILE/ios/libtor.xcframework.zip ./MOBILE/ios/libtor.podspec ./MOBILE/ios/libz.xcframework.zip ./MOBILE/ios/libz.podspec ./MOBILE/ios/oonimkall.xcframework.zip ./MOBILE/ios/oonimkall.podspec ./MOBILE/ios/Package.swift
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -93,72 +99,12 @@ jobs:
           name: oonimkall.podspec
           path: ./MOBILE/ios/oonimkall.podspec
 
-  publish_ios_mobile:
-    runs-on: ubuntu-22.04
-    needs: build_ios_mobile
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: libcrypto.xcframework.zip
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: libcrypto.podspec
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: libevent.xcframework.zip
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: libevent.podspec
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: libssl.xcframework.zip
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: libssl.podspec
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: libtor.xcframework.zip
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: libtor.podspec
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: libz.xcframework.zip
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: libz.podspec
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: oonimkall.xcframework.zip
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: oonimkall.podspec
-
-      - run: ./script/ghpublish.bash libcrypto.xcframework.zip libcrypto.podspec libevent.xcframework.zip libevent.podspec libssl.xcframework.zip libssl.podspec libtor.xcframework.zip libtor.podspec libz.xcframework.zip libz.podspec oonimkall.xcframework.zip oonimkall.podspec
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   publish_ios_maven:
     runs-on: ubuntu-22.04
     needs: build_ios_mobile
-    if: github.event_name != 'schedule'
+    # Forks have no Maven Central credentials: they only publish to their own
+    # GitHub release.
+    if: github.event_name != 'schedule' && github.repository == 'ooni/probe-cli'
     permissions:
       contents: write
     strategy:

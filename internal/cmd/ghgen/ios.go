@@ -6,6 +6,7 @@ package main
 
 import (
 	"io"
+	"strings"
 
 	"github.com/ooni/probe-cli/v3/internal/runtimex"
 )
@@ -28,19 +29,30 @@ func buildAndPublishMobileIOS(w io.Writer, job *Job) {
 		"./MOBILE/ios/oonimkall.xcframework.zip",
 		"./MOBILE/ios/oonimkall.podspec",
 	}
-	publishJob := "publish_ios_mobile"
+	swiftPackage := "./MOBILE/ios/Package.swift"
 
-	newJob(w, buildJob, runsOnMacOS, noDependencies, noPermissions)
+	// We publish to the GitHub release from the build job, where the
+	// .xcframework zips and the Package.swift that pins their checksums
+	// already exist, rather than downloading them into a separate job.
+	newJob(w, buildJob, runsOnMacOS, noDependencies, contentsWritePermissions)
 	newStepCheckout(w)
 	newStepSetupGo(w, "ios")
 	iosNewStepBrewInstall(w)
 	newStepMake(w, "EXPECTED_XCODE_VERSION=15.4 ios")
-	newStepUploadArtifacts(w, artifacts)
+	iosNewStepGHPublish(w, append(append([]string{}, artifacts...), swiftPackage))
 
-	newJob(w, publishJob, runsOnUbuntu, buildJob, contentsWritePermissions)
-	newStepCheckout(w)
-	newStepDownloadArtifacts(w, artifacts)
-	newStepGHPublish(w, artifacts)
+	// The Maven publishing jobs consume these artifacts.
+	newStepUploadArtifacts(w, artifacts)
+}
+
+// iosNewStepGHPublish is like newStepGHPublish but uploads the files from
+// where the build job created them rather than from the working directory.
+func iosNewStepGHPublish(w io.Writer, files []string) {
+	runtimex.Assert(len(files) > 0, "expected at least one file")
+	mustFprintf(w, "      - run: ./script/ghpublish.bash %s\n", strings.Join(files, " "))
+	mustFprintf(w, "        env:\n")
+	mustFprintf(w, "          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n")
+	mustFprintf(w, "\n")
 }
 
 func iosNewStepBrewInstall(w io.Writer) {
